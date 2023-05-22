@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
+
 public class DynamicAgent {
 
 	enum dec_mode {
@@ -141,31 +142,46 @@ public class DynamicAgent {
 
 	// top-level interaction code
 	public static void interact(DynamicAgent u, DynamicAgent v) {
-		updating_group(u, v);
+		for (DynamicAgent a : new DynamicAgent[] { u, v }) {
+		  updating_group(a);
+		}
 		reset_count_down_on_array(u, v);
 		for (DynamicAgent a : new DynamicAgent[] { u, v }) {
 			update_missing_value(a);
-			timer_routine(a);
-			if (a.phase == Phase.normal) {
-				size_checker(a);
+			// timer_routine(a);
+			// if (a.phase == Phase.normal) {
+			// 	size_checker(a);
+			// }
+			size_checker(a);
+			if (a.phase != Phase.normal) {
+				timer_routine(a);
 			}
 		}
 
-		if (u.phase == Phase.updating && v.phase == Phase.updating) {
-			propagate_max_grv(u, v);
-		} else if (u.phase == Phase.normal && v.phase == Phase.normal) {
-			// both confident that their values are correct
-			propagate_max_grv(u, v);
-			u.estimate = u.grv;
-			v.estimate = v.grv;
+		// if (u.phase == Phase.updating && v.phase == Phase.updating) {
+		// 	propagate_max_grv(u, v);
+		// } else if (u.phase == Phase.normal && v.phase == Phase.normal) {
+		// 	// both confident that their values are correct
+		// 	propagate_max_grv(u, v);
+		// 	u.estimate = u.grv;
+		// 	v.estimate = v.grv;
+		// }
+		propagate_max_grv(u, v);
+		for (DynamicAgent a : new DynamicAgent[] { u, v }) {
+			if (a.phase == Phase.normal) {
+				a.estimate = a.grv;
+			}
 		}
 	}
 
 	private static void size_checker(DynamicAgent u) {
-		if (u.first_missing_v *(1.5) < u.estimate) {
-			u.phase = Phase.waiting;
-		}
-		if (u.first_missing_v /4 > u.estimate) {
+		// if (u.first_missing_v *(1.5) < u.estimate) {
+		// 	u.phase = Phase.waiting;
+		// }
+		// if (u.first_missing_v /4 > u.estimate) {
+		// 	u.phase = Phase.waiting;
+		// }
+		if (u.phase == Phase.normal && (u.first_missing_v * 4 < u.estimate || 5 * u.estimate < 2 * u.first_missing_v)) {
 			u.phase = Phase.waiting;
 		}
 	}
@@ -248,58 +264,81 @@ public class DynamicAgent {
 	}
 
 	private static void propagate_max_grv(DynamicAgent u, DynamicAgent v) {
-		u.grv = v.grv = Math.max(u.grv, v.grv);
-
+		// u.grv = v.grv = Math.max(u.grv, v.grv);
+		if (u.phase == v.phase && u.phase != Phase.waiting) {
+			u.grv = Math.max(u.grv, v.grv);
+			v.grv = u.grv;
+		}
 	}
 
 	static void timer_routine(DynamicAgent u) {
-		int threshold = 4 * u.first_missing_v;
+		// int threshold = 4 * u.first_missing_v;
 
-		if (u.phase != Phase.normal) {
-			u.timer++;
-		}
-		if (u.timer >= threshold) { // timer hits the threshold
+		// if (u.phase != Phase.normal) {
+		// 	u.timer++;
+		// }
+		// if (u.timer >= threshold) { // timer hits the threshold
+		// 	if (u.phase == Phase.waiting) {
+		// 		// every agent must have almost equal "first_missing_value"
+		// 		// thus, we can use it as a mutual timer bound
+		// 		u.grv = generate_regular_grv();
+		// 		u.timer = 1;
+		// 		u.phase = Phase.updating;
+		// 	} else if (u.phase == Phase.updating) {
+		// 		u.estimate = u.grv;
+		// 		u.phase = Phase.normal;
+		// 		u.timer = 0;
+		// 		// must wait for some inconsistency to trigger internal_timer
+		// 	}
+		// }
+		u.timer += 1;
+		if (u.timer > 12 * u.first_missing_v) {
 			if (u.phase == Phase.waiting) {
-				// every agent must have almost equal "first_missing_value"
-				// thus, we can use it as a mutual timer bound
 				u.grv = generate_regular_grv();
-				u.timer = 1;
-				u.phase = Phase.updating;
-			} else if (u.phase == Phase.updating) {
-				u.estimate = u.grv;
-				u.phase = Phase.normal;
 				u.timer = 0;
-				// must wait for some inconsistency to trigger internal_timer
+				u.phase = Phase.updating;
+			}
+			if (u.phase == Phase.updating) {
+				u.estimate = u.grv;
+				u.timer = 0;
+				u.phase = Phase.normal;
 			}
 		}
 	}
 
-	private static void updating_group(DynamicAgent u, DynamicAgent v) {
+	private static void updating_group(DynamicAgent u) {
 		if (rnd.nextBoolean())
 			u.group += 1;
 		else {
-			v.group = 1;
+			u.group = 1;
 		}
 	}
 
+  // UpdateMV?
 	private static void update_missing_value(DynamicAgent u) {
 		// looking for the first zero
-		boolean zeros = false;
+		// boolean zeros = false;
 //		int loglogn = (int) (Math.log(Math.log(population_size)/Math.log(2))/Math.log(2));
-		int start = 2;
-		if (u.estimate > 10)
-			start = (int) Math.floor((1 + Math.log(u.estimate)) / Math.log(2));
+		int start = 0;
+		int tmp = 1;
+		while (u.estimate > tmp) {
+			start++;
+			tmp <<= 1;
+		}
+
+		// if (u.estimate > 10)
+		// 	start = (int) Math.floor((1 + Math.log(u.estimate)) / Math.log(2));
+
 
 		for (int i = start; i < u.all_clocks.size(); i++) {
 			if (u.all_clocks.get(i) == 0) {
-				u.first_missing_v = i - 1;
-				zeros = true;
+				u.first_missing_v = i; // 0-indexed? 
+				// zeros = true;
 				return;
 			}
 		}
-		if (!zeros) {
-			u.first_missing_v = u.all_clocks.size() - 1;
-		}
+		
+		u.first_missing_v = u.all_clocks.size() - 1;
 	}
 
 	private static void inc_the_population_size(ArrayList<DynamicAgent> agents) {
@@ -325,19 +364,22 @@ public class DynamicAgent {
 		clk_u = u.all_clocks;
 		clk_v = v.all_clocks;
 
+		clk_u.set(u.group, 3*u.group + 1);
+		clk_v.set(v.group, 3*v.group + 1);
+
 		// special case for direct contact
-		for (int i = 1; i < clk_u.size(); i++) {
+		for (int i = 0; i < clk_u.size(); i++) {
 			int max_i = Math.max(clk_u.get(i), clk_v.get(i));
 			clk_u.set(i, Math.max(0, max_i - 1));
 			clk_v.set(i, Math.max(0, max_i - 1));
 		}
 
-		int c = u.timer_constant;
-		// special case for direct contact
-		clk_u.set(u.group, u.group * c);
-		clk_v.set(u.group, u.group * c);
-		clk_v.set(v.group, v.group * c);
-		clk_u.set(v.group, v.group * c);
+		// int c = u.timer_constant;
+		// // special case for direct contact
+		// clk_u.set(u.group, u.group * c);
+		// clk_v.set(u.group, u.group * c);
+		// clk_v.set(v.group, v.group * c);
+		// clk_u.set(v.group, v.group * c);
 	}
 
 	public static ArrayList<Integer> aggregate_group_distribution(ArrayList<DynamicAgent> agents) {
