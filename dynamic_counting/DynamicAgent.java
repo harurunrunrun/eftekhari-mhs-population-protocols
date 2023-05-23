@@ -331,7 +331,7 @@ public class DynamicAgent {
 
 		for (int i = start; i < u.all_clocks.size(); i++) {
 			if (u.all_clocks.get(i) == 0) {
-				u.first_missing_v = i; // 0-indexed? 
+				u.first_missing_v = Math.max(0,i-1); // 0-indexed? 
 				// zeros = true;
 				return;
 			}
@@ -367,7 +367,7 @@ public class DynamicAgent {
 		clk_v.set(v.group, 3*v.group + 1);
 
 		// special case for direct contact
-		for (int i = 0; i < clk_u.size(); i++) {
+		for (int i = 1; i < clk_u.size(); i++) {
 			int max_i = Math.max(clk_u.get(i), clk_v.get(i));
 			clk_u.set(i, Math.max(0, max_i - 1));
 			clk_v.set(i, Math.max(0, max_i - 1));
