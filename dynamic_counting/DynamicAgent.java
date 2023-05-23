@@ -297,8 +297,7 @@ public class DynamicAgent {
 				u.grv = generate_regular_grv();
 				u.timer = 0;
 				u.phase = Phase.updating;
-			}
-			if (u.phase == Phase.updating) {
+			}else if (u.phase == Phase.updating) {// in the paper, this is "if"
 				u.estimate = u.grv;
 				u.timer = 0;
 				u.phase = Phase.normal;
